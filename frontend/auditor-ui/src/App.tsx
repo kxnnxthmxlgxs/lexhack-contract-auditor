@@ -37,7 +37,7 @@ export default function App() {
 
     try {
       // Adjust this port to match whatever your .NET API terminal says it is listening on
-      const res = await fetch("/api/audit/upload", {
+      const res = await fetch("https://lexhack-api.onrender.com/api/audit/upload", {
         method: "POST",
         body: formData,
       });

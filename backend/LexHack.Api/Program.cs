@@ -5,6 +5,8 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using LexHack.Api.Data;
 
+
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Register HTTP Client for Gemini REST calls
@@ -24,8 +26,27 @@ builder.Services.AddCors(options =>
               .AllowCredentials());
 });
 
+// Allow Vercel (or any frontend) to talk to this API
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
 var app = builder.Build();
-app.UseCors("AllowFrontend");
+
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    dbContext.Database.EnsureCreated(); 
+}
+
+
+app.UseCors("AllowAll");
 
 // 3. The API Endpoint with Native Gemini REST Extraction
 app.MapPost("/api/audit/upload", async (IFormFile file, [FromServices] IConfiguration config, [FromServices] AppDbContext db, [FromServices] IHttpClientFactory httpClientFactory) =>

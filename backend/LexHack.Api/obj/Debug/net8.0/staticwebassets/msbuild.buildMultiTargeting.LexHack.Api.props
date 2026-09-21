@@ -1,0 +1,3 @@
+﻿<Project>
+  <Import Project="../build/LexHack.Api.props" />
+</Project>

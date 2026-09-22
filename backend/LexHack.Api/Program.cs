@@ -5,8 +5,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using LexHack.Api.Data;
 
-
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Register HTTP Client for Gemini REST calls
@@ -19,16 +17,6 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // 2. Configure CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFrontend", policy => 
-        policy.SetIsOriginAllowed(_ => true) 
-              .AllowAnyMethod()
-              .AllowAnyHeader()
-              .AllowCredentials());
-});
-
-// Allow Vercel (or any frontend) to talk to this API
-builder.Services.AddCors(options =>
-{
     options.AddPolicy("AllowAll", policy =>
     {
         policy.AllowAnyOrigin()
@@ -39,13 +27,14 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Ensure SQLite database is created on startup
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     dbContext.Database.EnsureCreated(); 
 }
 
-
+// Enable CORS using the configured policy
 app.UseCors("AllowAll");
 
 // 3. The API Endpoint with Native Gemini REST Extraction
@@ -65,7 +54,7 @@ app.MapPost("/api/audit/upload", async (IFormFile file, [FromServices] IConfigur
     // --- STEP B: Native Gemini API Extraction ---
     var apiKey = config["Gemini:ApiKey"] ?? throw new Exception("API Key is missing.");
     var client = httpClientFactory.CreateClient();
-    var requestUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={apiKey}";    
+    var requestUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={apiKey}";    
     var payload = new
     {
         contents = new[] {
@@ -128,27 +117,35 @@ app.MapPost("/api/audit/upload", async (IFormFile file, [FromServices] IConfigur
     foreach(var rule in playbook.Rules)
     {
         bool passed = false;
-        string extVal = "";
+        string extVal = "Not Found";
 
         if (rule.ClauseType == "governing_law") {
-            extVal = extractedData.GoverningLaw;
-            passed = (rule.Operator == "Equals" && extVal.Equals(rule.TargetValue, StringComparison.OrdinalIgnoreCase));
+            extVal = extractedData.GoverningLaw ?? "Not Found";
+            passed = (rule.Operator == "Equals" && string.Equals(extVal, rule.TargetValue, StringComparison.OrdinalIgnoreCase));
         }
         else if (rule.ClauseType == "liability_cap_amount") {
             extVal = extractedData.LiabilityCapAmount.ToString();
-            if (rule.Operator == "LessThanOrEqual") passed = extractedData.LiabilityCapAmount <= decimal.Parse(rule.TargetValue);
+            if (rule.Operator == "LessThanOrEqual" && decimal.TryParse(rule.TargetValue, out var targetDec)) {
+                passed = extractedData.LiabilityCapAmount <= targetDec;
+            }
         }
         else if (rule.ClauseType == "is_indemnification_mutual") {
             extVal = extractedData.IsIndemnificationMutual.ToString();
-            if (rule.Operator == "Equals") passed = extractedData.IsIndemnificationMutual == bool.Parse(rule.TargetValue);
+            if (rule.Operator == "Equals" && bool.TryParse(rule.TargetValue, out var targetBool)) {
+                passed = extractedData.IsIndemnificationMutual == targetBool;
+            }
         }
         else if (rule.ClauseType == "non_solicitation_months") {
             extVal = extractedData.NonSolicitationMonths.ToString();
-            if (rule.Operator == "LessThanOrEqual") passed = extractedData.NonSolicitationMonths <= int.Parse(rule.TargetValue);
+            if (rule.Operator == "LessThanOrEqual" && int.TryParse(rule.TargetValue, out var targetInt)) {
+                passed = extractedData.NonSolicitationMonths <= targetInt;
+            }
         }
         else if (rule.ClauseType == "unilateral_termination_days") {
             extVal = extractedData.UnilateralTerminationDays.ToString();
-            if (rule.Operator == "GreaterThanOrEqual") passed = extractedData.UnilateralTerminationDays >= int.Parse(rule.TargetValue);
+            if (rule.Operator == "GreaterThanOrEqual" && int.TryParse(rule.TargetValue, out var targetInt)) {
+                passed = extractedData.UnilateralTerminationDays >= targetInt;
+            }
         }
 
         if (!passed) auditRun.RiskScore += rule.Severity == "Critical" ? 50 : 20;
@@ -173,7 +170,7 @@ app.Run();
 
 // 4. Type Declarations
 public record ContractExtraction(
-    [property: JsonPropertyName("governing_law")] string GoverningLaw,
+    [property: JsonPropertyName("governing_law")] string? GoverningLaw,
     [property: JsonPropertyName("liability_cap_amount")] decimal LiabilityCapAmount,
     [property: JsonPropertyName("is_indemnification_mutual")] bool IsIndemnificationMutual,
     [property: JsonPropertyName("non_solicitation_months")] int NonSolicitationMonths,

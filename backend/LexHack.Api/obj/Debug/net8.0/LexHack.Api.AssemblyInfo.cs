@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("LexHack.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+bc5835b2a85e6e7d57c10733809147e185dd85c0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+323cc2beb6bce34337b50cc13e75736f3459cae0")]
 [assembly: System.Reflection.AssemblyProductAttribute("LexHack.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("LexHack.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

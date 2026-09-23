@@ -54,7 +54,7 @@ app.MapPost("/api/audit/upload", async (IFormFile file, [FromServices] IConfigur
     // --- STEP B: Native Gemini API Extraction ---
     var apiKey = config["Gemini:ApiKey"] ?? throw new Exception("API Key is missing.");
     var client = httpClientFactory.CreateClient();
-    var requestUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={apiKey}";    
+    var requestUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent?key={apiKey}";    
     var payload = new
     {
         contents = new[] {
